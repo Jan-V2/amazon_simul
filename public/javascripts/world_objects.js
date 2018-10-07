@@ -1,7 +1,34 @@
 
 
-function Tuck() {
-
+function Truck(truckstate, mesh) {
+    let _this = this;
+    let start_coord = new Coord(-4, -40);
+    let speed = 4;
+    this.at_dock = truckstate.at_dock;
+    this.travel_time = truckstate.travel_time;
+    
+    this.update_state = function(truckstate){
+        _this.at_dock = truckstate.at_dock;
+        _this.travel_time = truckstate.travel_time;
+        let target = start_coord.translate(new Coord(0, get_progress() * speed));
+        
+        mesh.position.x = target.x;
+        mesh.position.z = target.z;
+    };
+    
+    this.move = function(delta){
+        mesh.translateZ (delta * speed);
+    };
+    
+    function get_progress() {
+        let ret = _this.travel_time;
+        if (_this.at_dock){
+            ret += 10;
+        }
+        return ret;
+    }
+    
+    this.update_state(truckstate);
 }
 
 function Scaffold (location, group, scene, assets) {

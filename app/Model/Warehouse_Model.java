@@ -36,7 +36,6 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
         this.max_robots = max_robots;
         //tries to add max robots number of robots.
 
-        dijkstra_path_finder.find_path(new Robot(new Coord(6,2)), new Coord(6,0));
         for (int i = 0; i <this.max_robots ; i++) {
             add_robot();
         }
@@ -114,7 +113,7 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
                         robot.carrying_scaffold = false;
                         summary.add_robot_unload(robot.id);
                     }else{
-                        throw new ArrayIndexOutOfBoundsException("goods can't be exchanged, actors are in wrong state.");
+                      //  throw new ArrayIndexOutOfBoundsException("goods can't be exchanged, actors are in wrong state.");
                     }
                 }
             }

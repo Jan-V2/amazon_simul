@@ -129,25 +129,25 @@ class Dijkstra_Path_Finder {
 
 
     class Graaf{
-        //todo add bridge nodes, to make it more like dijkstra.
-        //todo make this into "proper" dijkstra by generating a mesh of nodes from the map.
-        protected final char[][] map = new char[][]{//the cols on the sides have to be untraversable.
-                {'X','X','X','X','D','D','D','D','D','X','X','X','X','X'},
-                {'X','R','R','R','R','R','R','R','R','R','R','R','R','X'},
-                {'X','R','X','X','P','P','P','P','P','X','X','X','R','X'},
-                {'X','R','X','X','X','X','X','X','X','X','X','X','R','X'},
-                {'X','R','S','S','S','S','S','S','S','S','S','S','R','X'},
-                {'X','R','R','R','R','R','R','R','R','R','R','R','R','X'},
-                {'X','R','S','S','S','S','S','S','S','S','S','S','R','X'},
-                {'X','R','S','S','S','S','S','S','S','S','S','S','R','X'},
-                {'X','R','R','R','R','R','R','R','R','R','R','R','R','X'},
-                {'X','R','S','S','S','S','S','S','S','S','S','S','R','X'},
-                {'X','R','S','S','S','S','S','S','S','S','S','S','R','X'},
-                {'X','R','R','R','R','R','R','R','R','R','R','R','R','X'},
-                {'X','R','S','S','S','S','S','S','S','S','S','S','R','X'},
-                {'X','R','S','S','S','S','S','S','S','S','S','S','R','X'},
-                {'X','R','R','R','R','R','R','R','R','R','R','R','R','X'},
-                {'X','X','X','X','X','X','X','X','X','X','X','X','X','X'},};
+        protected final char[][] map = new char[][]{
+                {'X','X','X','X','X','X','X','D','D','D','X','X','X','X','X','X','X'},
+                {'X','R','R','R','R','R','R','R','R','R','R','R','R','R','R','R','X'},
+                {'X','R','X','X','X','X','P','P','P','P','P','X','X','X','X','R','X'},
+                {'X','R','X','X','X','X','X','X','X','X','X','X','X','X','X','R','X'},
+                {'X','R','R','R','R','R','R','R','R','R','R','R','R','R','R','R','X'},
+                {'X','R','S','S','S','S','S','S','S','S','S','S','S','S','S','R','X'},
+                {'X','R','S','S','S','S','S','S','S','S','S','S','S','S','S','R','X'},
+                {'X','R','R','R','R','R','R','R','R','R','R','R','R','R','R','R','X'},
+                {'X','R','S','S','S','S','S','S','S','S','S','S','S','S','S','R','X'},
+                {'X','R','S','S','S','S','S','S','S','S','S','S','S','S','S','R','X'},
+                {'X','R','R','R','R','R','R','R','R','R','R','R','R','R','R','R','X'},
+                {'X','R','S','S','S','S','S','S','S','S','S','S','S','S','S','R','X'},
+                {'X','R','S','S','S','S','S','S','S','S','S','S','S','S','S','R','X'},
+                {'X','R','R','R','R','R','R','R','R','R','R','R','R','R','R','R','X'},
+                {'X','R','S','S','S','S','S','S','S','S','S','S','S','S','S','R','X'},
+                {'X','R','S','S','S','S','S','S','S','S','S','S','S','S','S','R','X'},
+                {'X','R','R','R','R','R','R','R','R','R','R','R','R','R','R','R','X'},
+                {'X','X','X','X','X','X','X','X','X','X','X','X','X','X','X','X','X'}};
         //todo bug with E and R nodes
         private ArrayList<Coord> parking_spots;
         private ArrayList<Coord> dock_spots;

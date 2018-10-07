@@ -4,7 +4,8 @@
 
 # Home page
 GET     /                           controllers.Application.index
-# GET     /ws                         controllers.Application.ws
+GET     /ws                         controllers.Application.socket
+GET     /test                       controllers.Application.socket_test
 
 
 # Map static resources from the /public folder to the /assets URL path

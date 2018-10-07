@@ -1,17 +1,20 @@
-@(title: String)(content: Html)
+@(title: String)
 
 <!DOCTYPE html>
-
 <html>
-    <head>
-        <title>@title</title>
-        <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/main.css")">
-        <link rel="shortcut icon" type="image/png" href="@routes.Assets.at("images/favicon.png")">
 
-        <script src="@routes.Assets.at("javascripts/libs/jquery-1.9.0.min.js")" type="text/javascript"></script>
-        <script src="@routes.Assets.at("javascripts/index.js")" type="text/javascript"></script>
+    <head>
+        <meta charset="UTF-8">
+        <title>SimulationView</title>
     </head>
-    <body @*data-ws-url="@routes.HomeController.ws.webSocketURL()"*@>
-        @content
+
+    <body style="margin:0px;padding:0px;overflow:hidden;">
+        <script src="@routes.Assets.at("javascripts/js_lib/three.min.js")"></script>
+        <script src="@routes.Assets.at("javascripts/js_lib/OrbitControls.js")"></script>
+        <script src="@routes.Assets.at("javascripts/js_lib/Queue.js")"></script>
+
+        <script src="@routes.Assets.at("javascripts/index.js")"></script>
+
     </body>
+
 </html>

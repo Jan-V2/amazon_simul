@@ -14,7 +14,7 @@ let exampleSocket;
 * */
 
 const squaresize = 2;
-const ticktime_in_secs = .3;
+const ticktime_in_secs = 1;
 
 function Coord(x, z) {
     let _this = this;
@@ -28,105 +28,115 @@ function Coord(x, z) {
     
 }
 
-
-function Robot(location, mesh) {
-    let _this = this;
-    this.mesh = mesh;
-    this.speed = 2;
-    this.path = new Queue();
-    
-    let moving_positive;
-    let moving_in_x_direction;
-    let is_moving;
-    
-    Object.freeze(this.location);
-    Object.freeze(this.mesh);
-    Object.freeze(this.speed);
-    
-    this.mesh.position.y = 0.15;
-    this.mesh.position.x = location.x * squaresize;
-    this.mesh.position.z = location.z * squaresize;
-    
-    this.move = function (amount) {
-        if (is_moving){
-            if (!moving_positive){
-                amount = -amount;
-            }
-    
-            if (moving_in_x_direction){
-                _this.mesh.translateX(amount);
-            } else{
-                _this.mesh.translateZ(amount);
-            }
-        }
-    };
-    
-    this.pop_path = function () {
-        if (!_this.path.isEmpty()) {
-            let coord = _this.path.dequeue();
-            console.log(coord);
-            if (location.x === coord.x && location.z === coord.z){
-                is_moving = false; // filters out duplicates
-                console.log("found double" );
-            } else{
-                is_moving = true;
-                if (location.x !== coord.x){
-                    moving_in_x_direction = true;
-                    moving_positive = location.x < coord.x;
-                } else if (location.z !== coord.z){
-                    moving_in_x_direction = false;
-                    moving_positive = location.z < coord.z;
-                } else{
-                    // todo
-                }
-                location = coord;
-            }
-        }else{
-            is_moving = false;
-        }
-
-    }
+function convert_coord(socket_coord){
+    return new Coord(socket_coord.x, socket_coord.y);
 }
+
+
 
 window.onload = function () {
     let camera, scene, renderer;
     let cameraControls;
-    let robot;
+    let assets = new Assets();
+    let group = new THREE.Group();
     
-    let worldObjects = {};
     
     let clock = new THREE.Clock();
     
-    let moving = true;
     let time_since_last_tick = 0.0;
     let speed_per_sec = squaresize / ticktime_in_secs;
-    let moving_straight = true;
     
-    let distance = 0;
+    let scaffolds = [];
+    let robots = [];
+    
+    let scaffold_place_queue = new Queue();
+    let scaffold_remove_queue = new Queue();
+    
+    let tick_id;
+    let animated_frames = 0;
+    
+    function get_scaffold_with_location(location){
+        return get_with_location(scaffolds, location)
+    }
+    
+    function get_robot_with_id(id){
+        for (let i = 0; i < robots.length; i++) {
+            if (robots[i].id === id){
+                return robots[i];
+            }
+        }
+    }
+    
+    function get_with_location(array, location) {
+        for (let i = 0; i < array.length; i++) {
+            let scaf = array[i];
+            if (scaf.location === location){
+                return scaf;
+            }
+        }
+    }
+    
+    
     
     function animate() {
         requestAnimationFrame(animate);
         let delta = clock.getDelta();
         
         time_since_last_tick += delta;
-        if (time_since_last_tick < ticktime_in_secs){
+        if (time_since_last_tick > ticktime_in_secs){
             time_since_last_tick = 0.0;
-            robot.pop_path();
-            if (moving){
-                moving_straight = !moving_straight;
+            robots.forEach((robot) => {
+                if (robot.pop_path()){
+                    robot.pick_up_scaffold(create_new_scaffold(undefined));
+                }
+            });
+            animated_frames = 0;
+            let delete_queue = [];
+            for (let i = 0; i < scaffolds.length; i++) {
+                if (scaffolds[i].location.x === -1) {
+                    delete_queue.push(i);
+                }
             }
+            for (let i = delete_queue.length - 1; i > -1; i--) {
+                scaffolds.splice(delete_queue[i], 1)
+            }
+            
+            if (!scaffold_place_queue.isEmpty()) {
+                if (scaffold_place_queue.peek().tick_id > tick_id){
+                    let coord = scaffold_place_queue.dequeue().coord;
+                    scaffolds.push(create_new_scaffold(coord));
+                }
+            }
+            
+            
+            if (!scaffold_remove_queue.isEmpty()) {
+                if (scaffold_remove_queue.peek().tick_id > tick_id){
+                    let coord = scaffold_place_queue.dequeue().coord;
+                    get_scaffold_with_location(coord).remove();
+                }
+            }
+            
+            tick_id++;
         }
         
-        if (moving){
+        
+        robots.forEach((robot) => {
             robot.move(speed_per_sec * delta);
-        }
+        });
+        animated_frames += 1;
         
         cameraControls.update();
         renderer.render(scene, camera);
         
     }
     
+    function create_new_scaffold(location) {
+        return new Scaffold(location,group, scene, assets)
+    }
+    
     function init(world_state) {
+        
+        tick_id =  world_state.tick_id;
         
         let world_map = world_state.world_map;
         
@@ -139,16 +149,13 @@ window.onload = function () {
         
         window.addEventListener('resize', onWindowResize, false);
         
-        let square_geometry = new THREE.PlaneGeometry(squaresize, squaresize, 3);
-        let material_red = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });
-        let material_green = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide });
-        let material_blue = new THREE.MeshBasicMaterial({ color: 0x0000ff, side: THREE.DoubleSide });
-        let material_white = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
-        let material_light_blue = new THREE.MeshBasicMaterial({ color: 0x42c5f4, side: THREE.DoubleSide });
-    
-    
+        
+        let plane_geometry = new THREE.PlaneGeometry(squaresize, squaresize, 3);
+        
+        
+        
         let add_plane = (i, j, material) => {
-            let plane = new THREE.Mesh(square_geometry, material);
+            let plane = new THREE.Mesh(plane_geometry, material);
             plane.position.x = i * squaresize ;
             plane.position.z = j * squaresize ;
             plane.rotation.x = Math.PI / 2.0;
@@ -159,20 +166,53 @@ window.onload = function () {
         for (let i = 0; i < world_map.length ; i++) {
             for (let j = 0; j < world_map.length; j++) {
                 if (world_map[j][i] === 'X'){
-                    add_plane(i,j,material_green);
+                    add_plane(i,j,assets.material_green);
                 } else if (world_map[j][i] === 'R'){
-                    add_plane(i,j,material_red);
+                    add_plane(i,j,assets.material_red);
                 } else if (world_map[j][i] === 'P'){
-                    add_plane(i,j,material_blue);
+                    add_plane(i,j,assets.material_blue);
                 } else if (world_map[j][i] === 'S'){
-                    add_plane(i,j,material_white);
+                    add_plane(i,j,assets.material_white);
                 } else if (world_map[j][i] === 'D'){
-                    add_plane(i,j,material_light_blue);
+                    add_plane(i,j,assets.material_light_blue);
                 }
             }
         }
         
+        // load scaffolds
         
+        world_state.scaffold_positions.forEach((location) => {
+            location = convert_coord(location);
+            scaffolds.push(create_new_scaffold(location));
+        });
+        
+        
+        // load the robot
+        let robot_geometry = new THREE.BoxGeometry(0.9, 0.3, 0.9);
+        world_state.robo_info.forEach((info) => {
+            robot = new Robot(new Coord(info.x, info.y),
+                new THREE.Mesh(robot_geometry, assets.robot_material), info.id);
+            robot.mesh.position.x = robot.location.x * squaresize - squaresize;
+            robot.mesh.position.z = robot.location.y * squaresize;
+            if (info.has_scaffold){
+                let scaffold = create_new_scaffold(undefined);
+                robot.pick_up_scaffold(scaffold);
+                robot.path.enqueue(new Coord(0,0))
+            }
+            robots.push(robot)
+        });
+        
+        
+        // load skybox
+        let skybox_geom = new THREE.BoxGeometry(1000, 1000, 1000);
+        
+        // add stuff to group
+        scene.add(new THREE.Mesh(skybox_geom, assets.skybox_mat));
+        robots.forEach((robot) => {group.add(robot.mesh);})
+        
+        
+        
+        // add lighting
         let light = new THREE.AmbientLight(0x404040);
         light.intensity = 4;
         scene.add(light);
@@ -183,33 +223,11 @@ window.onload = function () {
         camera.position.y = 5;
         camera.position.x = 15;
         cameraControls.update();
-    
-    
-    
-        let robot_geometry = new THREE.BoxGeometry(0.9, 0.3, 0.9);
-        let cubeMaterials = [
-            new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("assets/textures/robot_side.png"), side: THREE.DoubleSide }), //LEFT
-            new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("assets/textures/robot_side.png"), side: THREE.DoubleSide }), //RIGHT
-            new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("assets/textures/robot_top.png"), side: THREE.DoubleSide }), //TOP
-            new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("assets/textures/robot_bottom.png"), side: THREE.DoubleSide }), //BOTTOM
-            new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("assets/textures/robot_front.png"), side: THREE.DoubleSide }), //FRONT
-            new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("assets/textures/robot_front.png"), side: THREE.DoubleSide }), //BACK
-        ];
-        let material = new THREE.MeshFaceMaterial(cubeMaterials);
-        robot = new Robot(new Coord(0,0), new THREE.Mesh(robot_geometry, material));
-    
-        robot.mesh.position.x = world_state.robo_info[0].x * squaresize - squaresize;
-        robot.mesh.position.z = world_state.robo_info[0].y * squaresize;
-    
-            let group = new THREE.Group();
-    
-        group.add(robot.mesh);
-    
+        
         scene.add(group);
         
-    
-    
-    
+        
+        
         animate();
     }
     
@@ -226,35 +244,44 @@ window.onload = function () {
         let message = JSON.parse(event.data);
         if (map_loaded){
             message.tick_summary.robot_moves.forEach((move) => {
-                robot.path.enqueue(new Coord(move.to.x - 1, move.to.y))
-            })
+                let to_coord = new Coord(move.to.x - 1, move.to.y);
+                get_robot_with_id(move.id).path.enqueue(to_coord);
+            });
+            message.tick_summary.scaffold_placed.forEach((coord) => {
+                scaffold_place_queue.enqueue({
+                    coord : convert_coord(coord),
+                    tick_id : message.tick_summary.tick_id
+                });
+            });
+            
+            
+            
+            message.tick_summary.scaffold_removed.forEach((coord) => {
+                scaffold_remove_queue.enqueue({
+                    coord : convert_coord(coord),
+                    tick_id : message.tick_summary.tick_id
+                });
+            });
+            message.tick_summary.robot_unload.forEach((id) => {
+                get_robot_with_id(id).path.enqueue({
+                    scaffold_change: true,
+                    add_scaffold: false
+                })
+            });
+            message.tick_summary.robot_load.forEach((id) => {
+                get_robot_with_id(id).path.enqueue({
+                    scaffold_change: true,
+                    add_scaffold: true
+                })
+            });
         } else{
             map_loaded = true;
             init(message.world_state);
         }
         
     };
-    /*
-        if (command.command == "update") {
-        if (Object.keys(worldObjects).indexOf(command.parameters.guid) < 0) {
-         if (command.parameters.type == "robot") {
-        
-                worldObjects[command.parameters.guid] = group;
-            //}
-        //}
     
-        let object = worldObjects[command.parameters.guid];
     
-        object.position.x = command.parameters.x;
-        object.position.y = command.parameters.y;
-        object.position.z = command.parameters.z;
     
-        object.rotation.x = command.parameters.rotationX;
-        object.rotation.y = command.parameters.rotationY;
-        object.rotation.z = command.parameters.rotationZ;
-        }
-        }*/
     
- 
-
 };

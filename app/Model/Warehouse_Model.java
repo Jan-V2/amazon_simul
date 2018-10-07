@@ -4,19 +4,17 @@ package Model;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import scala.Int;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.Random;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 
-public class Warehouse_Model implements Runnable {
+public class Warehouse_Model implements Runnable, IModel_Connector {
     // genereert voor elke tick een tick report en geeft die door aan de server.
 
     //todo the js client should control the model speed
 
-    private IModel_Update_Receiver receiver;
+    private HashMap<Integer, IModel_Receiver> receivers = new HashMap<>();
+    private int next_reciver_num = 0;
     private float ticktime = 1.0f;//ticktime in seconds
     private int max_robots;
     private ArrayList<Robot> robots = new ArrayList<>();
@@ -27,13 +25,15 @@ public class Warehouse_Model implements Runnable {
     private Dijkstra_Path_Finder dijkstra_path_finder = new Dijkstra_Path_Finder();
     private Json_Handeler json_handeler = new Json_Handeler();
 
+    private int robot_id = 0;
+    private int tick_id = 0;
+
     /*todo:
      * implement different node types
      * implement dijkstra*/
 
-    public Warehouse_Model(IModel_Update_Receiver receiver, int max_robots){
+    public Warehouse_Model( int max_robots){
         this.max_robots = max_robots;
-        this.receiver = receiver;
         //tries to add max robots number of robots.
 
         dijkstra_path_finder.find_path(new Robot(new Coord(6,2)), new Coord(6,0));
@@ -43,8 +43,8 @@ public class Warehouse_Model implements Runnable {
 
     }
 
-    public Warehouse_Model(IModel_Update_Receiver receiver){
-        this(receiver, 1);
+    public Warehouse_Model(){
+        this(3);
     }
 
     private void run_model(int ticktime_in_ms){
@@ -66,6 +66,7 @@ public class Warehouse_Model implements Runnable {
 
             Tick_Summary get_tick_summary(){
                 summary.add_truck_state(truck);
+                summary.tick_id = tick_id;
                 return summary;
             }
 
@@ -83,7 +84,7 @@ public class Warehouse_Model implements Runnable {
                         Coord new_location = robot.path.peek();
 
                         //if (!other_robot_coords.contains(new_location)){
-                            summary.add_robot_move(robot.location, new_location);
+                            summary.add_robot_move(robot.location, new_location, robot.id);
                             robot.location = robot.path.remove(0);
                         //}
                     }
@@ -103,7 +104,7 @@ public class Warehouse_Model implements Runnable {
                     if (truck.carrying_goods && !robot.carrying_scaffold){
                         truck.carrying_goods = false;
                         robot.carrying_scaffold = true;
-                        summary.add_robot_load(robot.location);
+                        summary.add_robot_load(robot.id);
                     }else{
                         throw new ArrayIndexOutOfBoundsException("goods can't be exchanged, actors are in wrong state.");
                     }
@@ -111,7 +112,7 @@ public class Warehouse_Model implements Runnable {
                     if (!truck.carrying_goods && robot.carrying_scaffold){
                         truck.carrying_goods = true;
                         robot.carrying_scaffold = false;
-                        summary.add_robot_unload(robot.location);
+                        summary.add_robot_unload(robot.id);
                     }else{
                         throw new ArrayIndexOutOfBoundsException("goods can't be exchanged, actors are in wrong state.");
                     }
@@ -132,7 +133,7 @@ public class Warehouse_Model implements Runnable {
             void load_unload_scaffold(Robot robot, boolean loading){
                 if (loading) {
                     // picks up scaffold
-                    System.out.println("picking up at " + robot.scaffold_location);
+                    System.out.println("picking scaffold up at " + robot.scaffold_location);
                     boolean found = false;
                     for (int i = 0; i < scaffolds_in_storage.size(); i++) {
                         if (scaffolds_in_storage.get(i).location.equals(robot.scaffold_location)) {
@@ -141,21 +142,20 @@ public class Warehouse_Model implements Runnable {
                             break;
                         }
                     }
-                    if (!found){
-                        throw new IndexOutOfBoundsException(
-                                "could not pick up scaffold at coord: " + robot.scaffold_location);
-                    }
-                    summary.add_scaffold_removed(robot.scaffold_location);
-                    summary.add_robot_load(robot.location);
+                    if (found){
+                        summary.add_scaffold_removed(robot.scaffold_location);
+                        summary.add_robot_load(robot.id);
 
-                    robot.carrying_scaffold = true;
+                        robot.carrying_scaffold = true;
+                    }
+
                 } else {
                     // drops of scaffold
                     scaffolds_in_storage.add(new Scaffold(robot.scaffold_location));
                     robot.carrying_scaffold = false;
 
                     summary.add_scaffold_placed(robot.scaffold_location);
-                    summary.add_robot_unload(robot.location);
+                    summary.add_robot_unload(robot.id);
 
                 }
             }
@@ -237,9 +237,23 @@ public class Warehouse_Model implements Runnable {
                 }
 
                 // sends changes to the server
-                receiver.recieve_tick_report(json_handeler.get_tick_result(model_controls.get_tick_summary()));
+
+                send_out_updates(json_handeler.get_tick_result(model_controls.get_tick_summary()));
+                tick_id++;
             }
-        }, 0, 600);
+        }, 0, 1000);
+
+    }
+
+    private void send_out_updates(JsonObject update){
+        int i = 0;
+        while (i < next_reciver_num){
+            IModel_Receiver receiver = this.receivers.getOrDefault(i, null);
+            if (receiver != null){
+                receiver.recieve_tick_report(update);
+            }
+            i++;
+        }
 
     }
 
@@ -303,7 +317,19 @@ public class Warehouse_Model implements Runnable {
         run_model(100);
     }
 
+    @Override
+    public int connect(IModel_Receiver receiver) {
+        int this_receiver_id = this.next_reciver_num;
+        this.receivers.put(this_receiver_id, receiver);
+        this.next_reciver_num++;
+        System.out.println("connected reciever");
+        return this_receiver_id;
+    }
 
+    @Override
+    public void disconnect_receiver(int receiver_id) {
+        receivers.remove(receiver_id);
+    }
 
 
     protected class Robot{
@@ -313,12 +339,15 @@ public class Warehouse_Model implements Runnable {
         private boolean carrying_scaffold = false;
         boolean going_to_warehouse = false;
         boolean picking_up_scaffold_for_truck = false;
+        final int id;
 
 
         LinkedList<Coord> path = new LinkedList<>();
 
         public Robot(Coord location){
             this.location = location;
+            id = robot_id;
+            robot_id++;
         }
 
         void setDestination(Coord destination) {
@@ -374,7 +403,7 @@ public class Warehouse_Model implements Runnable {
         }
 
         void reset_truck(){
-            System.out.println(scaffolds_in_storage.size());
+            System.out.println(scaffolds_in_storage.size() +  " scaffolds now in storage");
             this.leave_dock();
             this.arrived_at_dock = false;
             this.has_been_serviced = false;
@@ -429,14 +458,15 @@ public class Warehouse_Model implements Runnable {
             JsonObject tick_summary_json = new JsonObject();
 
 
+            tick_summary_json.add("tick_id", new JsonPrimitive(tick_summary.tick_id));
             tick_summary_json.add("scaffold_placed",
-                    array_to_json_array(tick_summary.scaffold_placed));
+                    coord_array_to_json_array(tick_summary.scaffold_placed));
             tick_summary_json.add("scaffold_removed",
-                    array_to_json_array(tick_summary.scaffold_removed));
+                    coord_array_to_json_array(tick_summary.scaffold_removed));
             tick_summary_json.add("robot_unload",
-                    array_to_json_array(tick_summary.robot_unload));
+                    int_array_to_json_array(tick_summary.robot_unload));
             tick_summary_json.add("robot_load",
-                    array_to_json_array(tick_summary.robot_load));
+                    int_array_to_json_array(tick_summary.robot_load));
             {
                 JsonObject truck_state = new JsonObject();
                 truck_state.add("arrived_at_dock",
@@ -454,9 +484,8 @@ public class Warehouse_Model implements Runnable {
                     JsonObject robot_move_json = new JsonObject();
                     robot_move_json.add("from", coord_to_json_object(robot_move.from));
                     robot_move_json.add("to", coord_to_json_object(robot_move.to));
-
+                    robot_move_json.add("id", new JsonPrimitive(robot_move.id));
                     robot_moves.add(robot_move_json);
-
                 }
 
                 tick_summary_json.add("robot_moves", robot_moves);
@@ -469,7 +498,7 @@ public class Warehouse_Model implements Runnable {
             return tick_result;
         }
 
-        private JsonArray array_to_json_array(ArrayList<Coord> arrayList){
+        private JsonArray coord_array_to_json_array(ArrayList<Coord> arrayList){
             JsonArray ret = new JsonArray();
             for (Coord coord: arrayList) {
                 ret.add(coord_to_json_object(coord));
@@ -477,6 +506,14 @@ public class Warehouse_Model implements Runnable {
             return ret;
         }
 
+
+        private JsonArray int_array_to_json_array(ArrayList<Integer> arrayList){
+            JsonArray ret = new JsonArray();
+            for (Integer in: arrayList) {
+                ret.add(new JsonPrimitive(in));
+            }
+            return ret;
+        }
 
         private JsonObject coord_to_json_object(Coord coord){
             JsonObject ret = new JsonObject();
@@ -491,6 +528,8 @@ public class Warehouse_Model implements Runnable {
 
             JsonObject ret = new JsonObject();
             ret.add("world_map", world_map);
+            ret.add("tick_id", new JsonPrimitive(tick_id));
+
             {
                 JsonArray robo_infos = new JsonArray();
                 for (Robot robot :robots) {
@@ -498,6 +537,8 @@ public class Warehouse_Model implements Runnable {
                     robo_info.add("x", new JsonPrimitive(robot.location.x));
                     robo_info.add("y", new JsonPrimitive(robot.location.y));
                     robo_info.add("has_scaffold", new JsonPrimitive(robot.carrying_scaffold));
+                    robo_info.add("id", new JsonPrimitive(robot.id));
+
                     robo_infos.add(robo_info);
 
                 }

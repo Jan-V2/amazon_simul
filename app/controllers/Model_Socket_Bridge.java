@@ -1,25 +1,18 @@
 package controllers;
 
-import Model.IModel_Update_Receiver;
+import Model.IModel_Connector;
+import Model.IModel_Receiver;
 import Model.Warehouse_Model;
 import akka.actor.*;
 import com.google.gson.JsonObject;
 
-public class MyWebSocketActor extends UntypedActor implements IModel_Update_Receiver {
-    Warehouse_Model model;
-
-    //todo put
-
-    public static Props props(ActorRef out) {
-        return Props.create(MyWebSocketActor.class, out);
-    }
-
+public class Model_Socket_Bridge extends UntypedActor implements IModel_Receiver {
     private final ActorRef out;
+    private final int reciver_id;
 
-    public MyWebSocketActor(ActorRef out) {
+    public Model_Socket_Bridge(ActorRef out, IModel_Connector warehouse_model) {
         this.out = out;
-        this.model = new Warehouse_Model(this);
-        this.model.run();
+        this.reciver_id = warehouse_model.connect(this);
     }
 
     public void onReceive(Object message) {
@@ -29,7 +22,7 @@ public class MyWebSocketActor extends UntypedActor implements IModel_Update_Rece
     }
 
     @Override
-    public void get_message(String message) {
+    public void transmit_message(String message) {
     }
 
     @Override

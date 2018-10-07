@@ -5,18 +5,20 @@ import play.api.libs.json.Json;
 
 import java.util.ArrayList;
 
-public class Tick_Summary {
+class Tick_Summary {
 
-    public ArrayList<Robot_Move> robot_moves = new ArrayList<>();
-    public ArrayList<Coord> scaffold_placed = new ArrayList<>();
-    public ArrayList<Coord> scaffold_removed = new ArrayList<>();
-    public ArrayList<Coord> robot_unload = new ArrayList<>();
-    public ArrayList<Coord> robot_load = new ArrayList<>();
-    public Truck_State truck_state;
+    ArrayList<Robot_Move> robot_moves = new ArrayList<>();
+    ArrayList<Coord> scaffold_placed = new ArrayList<>();
+    ArrayList<Coord> scaffold_removed = new ArrayList<>();
+    ArrayList<Integer> robot_unload = new ArrayList<>();
+    ArrayList<Integer> robot_load = new ArrayList<>();
+    int tick_id;
+    Truck_State truck_state;
 
 
-    void add_robot_move(Coord from, Coord to){
-        robot_moves.add(new Robot_Move(from, to));
+
+    void add_robot_move(Coord from, Coord to, int id){
+        robot_moves.add(new Robot_Move(from, to, id));
     }
 
     void add_scaffold_placed(Coord scaffold_coord){
@@ -33,26 +35,29 @@ public class Tick_Summary {
 
     }
 
-    void add_robot_unload(Coord robot_coord){
-        robot_unload.add(robot_coord);
+    void add_robot_unload(Integer robot_id){
+        robot_unload.add(robot_id);
     }
 
-    void add_robot_load(Coord robot_coord){
-        robot_load.add(robot_coord);
+    void add_robot_load(Integer robot_id){
+        robot_load.add(robot_id);
     }
 
-    public class Robot_Move{
+    class Robot_Move{
         public  Coord from;
         public  Coord to;
+        public int id;
 
-        Robot_Move(Coord from, Coord to){
+        Robot_Move(Coord from, Coord to, int id){
             this.from = from;
             this.to = to;
+            this.id = id;
         }
 
     }
 
-    public class Truck_State{
+
+    class Truck_State{
         public int travel_time_remaining;
         public boolean has_been_serviced;
         public boolean arrived_at_dock;

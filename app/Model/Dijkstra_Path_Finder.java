@@ -76,7 +76,6 @@ class Dijkstra_Path_Finder {
 
     void find_path_to_scaffold(Warehouse_Model.Robot robot, Coord scaffold_location){
         robot.scaffold_location = scaffold_location;
-        System.out.println(scaffold_location);
         find_path(robot, graaf.get_traversable_neighbours(robot.scaffold_location)[0]);
     }
 

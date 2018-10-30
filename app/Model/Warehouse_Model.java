@@ -240,7 +240,7 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
                 send_out_updates(json_handeler.get_tick_result(model_controls.get_tick_summary()));
                 tick_id++;
             }
-        }, 0, 1000);
+        }, 0, ticktime_in_ms);
 
     }
 
@@ -313,7 +313,7 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
     @Override
     public void run() {
         System.out.println("running model");
-        run_model(100);
+        run_model(1000);
     }
 
     @Override

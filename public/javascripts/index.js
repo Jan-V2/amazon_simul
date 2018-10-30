@@ -111,7 +111,7 @@ window.onload = function () {
     
             if (!scaffold_remove_queue.isEmpty()) {
                 if (scaffold_remove_queue.peek().tick_id > tick_id){
-                    let coord = scaffold_place_queue.dequeue().coord;
+                    let coord = scaffold_place_queue.dequeue().coord;//todo undefined error
                     get_scaffold_with_location(coord).remove();
                 }
             }
@@ -212,7 +212,7 @@ window.onload = function () {
         
         //loads the truck
         let truck_geom = new THREE.BoxGeometry(4, 8, 15);
-        let truck_mesh = new THREE.Mesh(truck_geom, assets.robot_material);
+        let truck_mesh = new THREE.Mesh(plane_geometry, assets.material_blue);// new THREE.Mesh(truck_geom, assets.robot_material);
         truck = new Truck(world_state.truck, truck_mesh);
         group.add(truck_mesh);
         
@@ -238,6 +238,7 @@ window.onload = function () {
         cameraControls.update();
         
         scene.add(group);
+        renderer.render(scene, camera);
         
         
         

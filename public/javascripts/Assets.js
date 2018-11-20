@@ -10,11 +10,11 @@ function Assets() {
     
     let obj_loader = new THREE.OBJLoader();
     
-    this.material_red = texture_loader("assets/textures/vloer.jpg");
-    this.material_green = texture_loader("assets/textures/wall.png");
-    this.material_blue = texture_loader("assets/textures/parking.jpeg");
-    this.material_white = texture_loader("assets/textures/pallet.jpg");
-    this.material_light_blue = texture_loader("assets/textures/steel_texture.jpg");
+    this.tex_vloer = texture_loader("assets/textures/vloer.jpg");
+    this.tex_muur = texture_loader("assets/textures/wall.png");
+    this.tex_parkeerplaats = texture_loader("assets/textures/parking.jpeg");
+    this.tex_pallet = texture_loader("assets/textures/pallet.jpg");
+    this.tex_dock = texture_loader("assets/textures/steel_texture.jpg");
     
     this.skybox_mat = new THREE.MeshFaceMaterial([
         texture_loader("assets/textures/skybox/right.png"), //RIGHT
@@ -34,4 +34,5 @@ function Assets() {
         texture_loader("assets/textures/robot_front.png"), //FRONT
         texture_loader("assets/textures/robot_front.png"), //BACK
     ]);
+
 }

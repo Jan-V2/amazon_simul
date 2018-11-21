@@ -313,7 +313,7 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
     @Override
     public void run() {
         System.out.println("running model");
-        run_model(1000);
+        run_model(1200);
     }
 
     @Override
@@ -505,7 +505,6 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
             return ret;
         }
 
-
         private JsonArray int_array_to_json_array(ArrayList<Integer> arrayList){
             JsonArray ret = new JsonArray();
             for (Integer in: arrayList) {
@@ -520,7 +519,6 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
             ret.add("y", new JsonPrimitive(coord.y));
             return ret;
         }
-
 
         private JsonObject get_modelstate_as_json(){
 

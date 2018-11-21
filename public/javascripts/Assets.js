@@ -8,8 +8,7 @@ function Assets() {
         return new THREE.MeshBasicMaterial({map: tex, side: THREE.DoubleSide})
     };
     
-    let obj_loader = new THREE.OBJLoader();
-    
+
     this.tex_vloer = texture_loader("assets/textures/vloer.jpg");
     this.tex_muur = texture_loader("assets/textures/wall.png");
     this.tex_parkeerplaats = texture_loader("assets/textures/parking.jpeg");
@@ -35,4 +34,5 @@ function Assets() {
         texture_loader("assets/textures/robot_front.png"), //BACK
     ]);
 
+    this.scaffold_geom = new THREE.BoxGeometry(1, 1, 1);
 }

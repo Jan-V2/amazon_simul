@@ -2,21 +2,18 @@
 function parseCommand(input = "") {
     return JSON.parse(input);
 }
+let robots = {};
 
-let exampleSocket;
-
-
+let server_msg;
 const squaresize = 2;
-const ticktime_in_secs = 1;
+const ticktime_in_ms = 1100;
 const assets = new Assets();
 
-// dinsdag
-// todo truck toevoegen.
-// todo systeem om acties te queuen.
-// todo variable snelheid
 
 // woensdag
-// todo loop buiten de animatie functie die robots an schaffolds beweegt
+// todo truck animation
+// todo scaffolds in en uitladen
+// todo texture voor truck en scaffold vinden
 // todo mischien rotatie toevoegen, if i can be fucked.
 
 
@@ -42,11 +39,7 @@ window.onload = function () {
     let camera, scene, renderer;
     let cameraControls;
     let assets = new Assets();
-    let group = new THREE.Group();
-    
-
-
-    
+    let truck;
     let tick_id;
 
 
@@ -54,6 +47,10 @@ window.onload = function () {
         requestAnimationFrame(animate);
         cameraControls.update();
         renderer.render(scene, camera);
+    }
+
+    function process_commands(){
+
     }
     
     function init(world_state) {
@@ -110,7 +107,16 @@ window.onload = function () {
         // add stuff to group
         scene.add(new THREE.Mesh(skybox_geom, assets.skybox_mat));
 
-        scene.add(new Robot());
+
+        for (let i in _.range(world_state.robo_info.length)){
+            let scaf = new Scaffold();
+            robots[i] = new Robot(scaf);
+            robots[i].set_position(new Coord_2d(world_state.robo_info[i].x,world_state.robo_info[i].y));
+            scene.add(robots[i])
+            scene.add(scaf)
+        }
+
+        scene.add(new Truck());
 
         // add lighting
         let light = new THREE.AmbientLight(0x404040);
@@ -124,7 +130,6 @@ window.onload = function () {
         camera.position.x = 15;
         cameraControls.update();
         
-        scene.add(group);
         renderer.render(scene, camera);
         animate();
     }
@@ -139,42 +144,24 @@ window.onload = function () {
     let websocket = new WebSocket("ws://" + window.location.hostname + ":" + window.location.port + "/ws");
     websocket.onmessage = (event) => {
         let message = JSON.parse(event.data);
+        server_msg = message;
         if (map_loaded){
-/*
-            truck_state_queue.enqueue({
-                truck_state: message.tick_summary.truck_state,
-                tick_id:message.tick_summary.tick_id
-            });
 
             message.tick_summary.robot_moves.forEach((move) => {
-                let to_coord = new Coord(move.to.x - 1, move.to.y);
-                get_robot_with_id(move.id).path.enqueue(to_coord);
+                robots[move.id].animate_to_coord(new Coord_2d(move.to.x, move.to.y), ticktime_in_ms)
             });
             message.tick_summary.scaffold_placed.forEach((coord) => {
-                scaffold_place_queue.enqueue({
-                    coord : convert_coord(coord),
-                    tick_id : message.tick_summary.tick_id
-                });
-            });
 
+            });
             message.tick_summary.scaffold_removed.forEach((coord) => {
-                scaffold_remove_queue.enqueue({
-                    coord : convert_coord(coord),
-                    tick_id : message.tick_summary.tick_id
-                });
+
             });
             message.tick_summary.robot_unload.forEach((id) => {
-                get_robot_with_id(id).path.enqueue({
-                    scaffold_change: true,
-                    add_scaffold: false
-                })
+
             });
             message.tick_summary.robot_load.forEach((id) => {
-                get_robot_with_id(id).path.enqueue({
-                    scaffold_change: true,
-                    add_scaffold: true
-                })
-            });*/
+
+            });
         } else{
             map_loaded = true;
             init(message.world_state);

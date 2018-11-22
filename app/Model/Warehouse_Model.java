@@ -4,7 +4,6 @@ package Model;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import scala.Int;
 
 import java.util.*;
 
@@ -142,7 +141,7 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
                         }
                     }
                     if (found){
-                        summary.add_scaffold_removed(robot.scaffold_location);
+                        summary.add_scaffold_removed(robot.scaffold_location, robot.id);
                         summary.add_robot_load(robot.id);
 
                         robot.carrying_scaffold = true;
@@ -153,7 +152,7 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
                     scaffolds_in_storage.add(new Scaffold(robot.scaffold_location));
                     robot.carrying_scaffold = false;
 
-                    summary.add_scaffold_placed(robot.scaffold_location);
+                    summary.add_scaffold_placed(robot.scaffold_location, robot_id);
                     summary.add_robot_unload(robot.id);
 
                 }
@@ -283,13 +282,14 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
     private ArrayList<Coord> get_free_docks(){
         return get_free_coords(dijkstra_path_finder.get_dock_spots());
     }
+
     private ArrayList<Coord> get_free_parking_spots(){
         return get_free_coords(dijkstra_path_finder.get_parking_spots());
     }
+
     private ArrayList<Coord> get_free_scaffold_spots(){
         return get_free_coords(dijkstra_path_finder.get_scaffold_spots());
     }
-
 
     private ArrayList<Coord> get_free_coords(ArrayList<Coord> coords){
         ArrayList<Coord> ret = new ArrayList<>();
@@ -307,8 +307,6 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
         }
         return ret;
     }
-
-
 
     @Override
     public void run() {
@@ -329,7 +327,6 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
     public void disconnect_receiver(int receiver_id) {
         receivers.remove(receiver_id);
     }
-
 
     protected class Robot{
         Coord location;
@@ -427,8 +424,6 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
         }
     }
 
-
-
     class Json_Handeler{
         private JsonArray world_map;
 
@@ -459,9 +454,9 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
 
             tick_summary_json.add("tick_id", new JsonPrimitive(tick_summary.tick_id));
             tick_summary_json.add("scaffold_placed",
-                    coord_array_to_json_array(tick_summary.scaffold_placed));
+                    coord_id_array_to_json_array(tick_summary.scaffold_placed));
             tick_summary_json.add("scaffold_removed",
-                    coord_array_to_json_array(tick_summary.scaffold_removed));
+                    coord_id_array_to_json_array(tick_summary.scaffold_removed));
             tick_summary_json.add("robot_unload",
                     int_array_to_json_array(tick_summary.robot_unload));
             tick_summary_json.add("robot_load",
@@ -497,12 +492,15 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
             return tick_result;
         }
 
-        private JsonArray coord_array_to_json_array(ArrayList<Coord> arrayList){
-            JsonArray ret = new JsonArray();
-            for (Coord coord: arrayList) {
-                ret.add(coord_to_json_object(coord));
+        private JsonArray coord_id_array_to_json_array(ArrayList<Tuple<Coord, Integer>> arrayList){
+            JsonArray array = new JsonArray();
+            for (Tuple<Coord, Integer> item: arrayList) {
+                JsonObject obj = new JsonObject();
+                obj.add("coord", coord_to_json_object(item.first));
+                obj.addProperty("robo_id", item.second);
+                array.add(obj);
             }
-            return ret;
+            return array;
         }
 
         private JsonArray int_array_to_json_array(ArrayList<Integer> arrayList){

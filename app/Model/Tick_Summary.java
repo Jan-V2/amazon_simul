@@ -8,8 +8,8 @@ import java.util.ArrayList;
 class Tick_Summary {
 
     ArrayList<Robot_Move> robot_moves = new ArrayList<>();
-    ArrayList<Coord> scaffold_placed = new ArrayList<>();
-    ArrayList<Coord> scaffold_removed = new ArrayList<>();
+    ArrayList<Tuple<Coord, Integer>> scaffold_placed = new ArrayList<>();
+    ArrayList<Tuple<Coord, Integer>> scaffold_removed = new ArrayList<>();
     ArrayList<Integer> robot_unload = new ArrayList<>();
     ArrayList<Integer> robot_load = new ArrayList<>();
     int tick_id;
@@ -21,12 +21,12 @@ class Tick_Summary {
         robot_moves.add(new Robot_Move(from, to, id));
     }
 
-    void add_scaffold_placed(Coord scaffold_coord){
-        scaffold_placed.add(scaffold_coord);
+    void add_scaffold_placed(Coord scaffold_coord, int robot_id){
+        scaffold_placed.add(new Tuple<>(scaffold_coord, robot_id));
     }
 
-    void add_scaffold_removed(Coord scaffold_coord) {
-        scaffold_removed.add(scaffold_coord);
+    void add_scaffold_removed(Coord scaffold_coord, int robot_id) {
+        scaffold_removed.add(new Tuple<>(scaffold_coord, robot_id));
     }
 
     void add_truck_state(Warehouse_Model.Truck truck){
@@ -56,7 +56,6 @@ class Tick_Summary {
 
     }
 
-
     class Truck_State{
         public int travel_time_remaining;
         public boolean has_been_serviced;
@@ -68,6 +67,5 @@ class Tick_Summary {
             this.arrived_at_dock =truck.arrived_at_dock;
         }
     }
-
-
 }
+

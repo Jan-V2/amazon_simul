@@ -11,7 +11,7 @@ function Actor(){
     };
 
     this.animate_to_coord = function(destination, ticktime_in_ms){
-        Actor.prototype._animate_to_coord( _this, destination, ticktime_in_ms)
+        Actor.prototype._animate_to_coord( _this, destination.get_3d_coord(), ticktime_in_ms)
     };
 
 
@@ -26,8 +26,7 @@ function Actor(){
 }
 
 Actor.prototype = Object.create(THREE.Group.prototype);
-Actor.prototype._animate_to_coord = function (_this, destination, time_in_ms, injection) {
-    destination = destination.get_3d_coord();
+Actor.prototype._animate_to_coord = function (_this, destination, time_in_ms, post_injection) {
     let ms_per_step = (time_in_ms ) / _this.steps_per_anim;
     let location = _this.location();
     let x_translate_per_step = -((location.x - destination.x) / _this.steps_per_anim);
@@ -44,8 +43,8 @@ Actor.prototype._animate_to_coord = function (_this, destination, time_in_ms, in
             _this.mesh.translateZ(y_translate_per_step);
         }
         counter++;
-        if(injection){
-            injection();
+        if(post_injection){
+            post_injection();
         }
     }, ms_per_step)
 };
@@ -79,11 +78,11 @@ function Robot(scaffold){
     this.animate_to_coord = function(destination, ticktime_in_ms){
         if (scaffold){
 
-            Actor.prototype._animate_to_coord( _this, destination, ticktime_in_ms, function () {
+            Actor.prototype._animate_to_coord( _this, destination.get_3d_coord(), ticktime_in_ms, function () {
                 align_scaffold();
             });
         }else{
-            Actor.prototype._animate_to_coord( _this, destination, ticktime_in_ms);
+            Actor.prototype._animate_to_coord( _this, destination.get_3d_coord(), ticktime_in_ms);
         }
     };
 
@@ -119,9 +118,14 @@ Robot.prototype = Object.create(Actor.prototype);
     writable: true }
     );*/
 
-function Truck(){
+function Truck(squaresize){
     Actor.call(this);
+    let _this = this;
     let height = 2.5;
+
+    let map_length = 17;
+    let last_position = 0;
+
 
     let geom = new THREE.BoxGeometry(7, height, 2.5);
 
@@ -129,12 +133,42 @@ function Truck(){
     this.add(this.mesh);
     this.mesh.translateY( height / 2);
     this.mesh.translateZ( -3);
+
+    this.update = function (truckstate, ticktime_in_ms) {
+        console.log(truckstate);
+        if (truckstate.did_reset){
+            reset()
+        }else{
+            if (truckstate.has_moved){
+                if (last_position > truckstate.position){
+                    move_model(map_length, ticktime_in_ms);
+                }else{
+                    move_model(truckstate.position, ticktime_in_ms);
+                }
+            }
+        }
+    };
+
+    function move_model(one_d_coord, ticktime_in_ms, no_animation) {
+        if (no_animation){
+            _this.mesh.position.x = one_d_coord;
+        }else {
+            let coord = new Coord_2d( one_d_coord * squaresize , _this.mesh.position.z);
+            console.log(coord);
+            Actor.prototype._animate_to_coord( _this, coord, ticktime_in_ms);
+        }
+
+    }
+    function reset(ticktime_in_ms) {
+        last_position = 0;
+        move_model(0, ticktime_in_ms, true);
+    }
 }
 
 Truck.prototype = Object.create(Actor.prototype);
 
 
-function Scaffold(){
+function Scaffold(position){
     Actor.call(this);
     let _this = this;
     this.mesh = new THREE.Mesh(assets.scaffold_geom, assets.robot_material);
@@ -153,7 +187,7 @@ function Scaffold(){
         _this.mesh.position.y = 0.85;
     };
 
-    this.unload();
+    this.unload(position);
 
 }
 

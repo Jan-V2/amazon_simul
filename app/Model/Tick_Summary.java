@@ -57,14 +57,19 @@ class Tick_Summary {
     }
 
     class Truck_State{
-        public int travel_time_remaining;
-        public boolean has_been_serviced;
-        public boolean arrived_at_dock;
+        int truck_position;
+        boolean has_moved;
+        boolean did_reset;
+
 
         Truck_State(Warehouse_Model.Truck truck){
-            this.travel_time_remaining = truck.travel_time_remaining;
-            this.has_been_serviced = truck.has_been_serviced;
-            this.arrived_at_dock =truck.arrived_at_dock;
+            this.truck_position = truck.travel_time - truck.travel_time_remaining;
+            if (truck.arrived_at_dock ){
+                this.truck_position += truck.travel_time;
+            }
+            this.did_reset = truck.did_reset;
+            this.has_moved = truck.has_moved();
+            truck.did_update();
         }
     }
 }

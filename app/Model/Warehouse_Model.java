@@ -20,7 +20,7 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
 
     // scaffolds get removed when they get taken out of storage
     private ArrayList<Scaffold> scaffolds_in_storage = new ArrayList<>();
-    private Truck truck = new Truck(10);
+    private Truck truck = new Truck(9);
     private Dijkstra_Path_Finder dijkstra_path_finder = new Dijkstra_Path_Finder();
     private Json_Handeler json_handeler = new Json_Handeler();
 
@@ -373,16 +373,20 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
 
     protected class Truck{
 
-        private int travel_time;
+        final int travel_time;
         int travel_time_remaining;
+        private int old_travel_time;
         private boolean carrying_goods = false;
         boolean arrived_at_dock = false;
         boolean has_been_serviced = false;
         boolean robot_underway = false;
+        boolean at_endpoint = false;
+        public boolean did_reset = false;
 
 
         Truck(int travel_time){
             this.travel_time = travel_time;
+            this.old_travel_time = travel_time;
         }
 
         public boolean get_has_load() {
@@ -404,12 +408,21 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
             this.arrived_at_dock = false;
             this.has_been_serviced = false;
             this.robot_underway = false;
+            this.at_endpoint = false;
             double scaffolds_in_storage_ratio = // lower means higher change new one will arrive.
                     (double) scaffolds_in_storage.size() / (double) dijkstra_path_finder.get_scaffold_spots().size();
             this.carrying_goods = Math.random() > scaffolds_in_storage_ratio;
+            this.did_reset = true;
         }
 
+        public boolean has_moved(){
+            return this.travel_time_remaining != this.old_travel_time;
+        }
 
+        public void did_update() {
+            this.old_travel_time = this.travel_time_remaining;
+            this.did_reset = false;
+        }
     }
 
     class Scaffold{
@@ -463,12 +476,12 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
                     int_array_to_json_array(tick_summary.robot_load));
             {
                 JsonObject truck_state = new JsonObject();
-                truck_state.add("arrived_at_dock",
-                        new JsonPrimitive(tick_summary.truck_state.arrived_at_dock));
-                truck_state.add("has_been_serviced",
-                        new JsonPrimitive(tick_summary.truck_state.has_been_serviced));
-                truck_state.add("travel_time_remaining",
-                        new JsonPrimitive(tick_summary.truck_state.travel_time_remaining));
+                truck_state.add("position",
+                        new JsonPrimitive(tick_summary.truck_state.truck_position));
+                truck_state.add("did_reset",
+                        new JsonPrimitive(tick_summary.truck_state.did_reset));
+                truck_state.add("has_moved",
+                        new JsonPrimitive(tick_summary.truck_state.has_moved));
                 tick_summary_json.add("truck_state", truck_state);
             }
 

@@ -3,10 +3,11 @@ function parseCommand(input = "") {
     return JSON.parse(input);
 }
 let robots = {};
-
+let scaffolds = [];
+let truck;
 let server_msg;
 const squaresize = 2;
-const ticktime_in_ms = 1100;
+const ticktime_in_ms = 1000;
 const assets = new Assets();
 
 
@@ -39,7 +40,6 @@ window.onload = function () {
     let camera, scene, renderer;
     let cameraControls;
     let assets = new Assets();
-    let truck;
     let tick_id;
 
 
@@ -98,6 +98,12 @@ window.onload = function () {
         
         // load scaffolds
 
+        world_state.scaffold_positions.forEach(function (pos) {
+            let new_coord = new Coord_2d(pos.x, pos.y);
+            let scaffold = new Scaffold(new_coord);
+            scaffolds.push(scaffold);
+            scene.add(scaffold);
+        });
 
         
         
@@ -112,11 +118,12 @@ window.onload = function () {
             let scaf = new Scaffold();
             robots[i] = new Robot(scaf);
             robots[i].set_position(new Coord_2d(world_state.robo_info[i].x,world_state.robo_info[i].y));
-            scene.add(robots[i])
-            scene.add(scaf)
+            scene.add(robots[i]);
+            scene.add(scaf);
         }
 
-        scene.add(new Truck());
+        truck = new Truck(squaresize);
+        scene.add(truck);
 
         // add lighting
         let light = new THREE.AmbientLight(0x404040);
@@ -162,6 +169,7 @@ window.onload = function () {
             message.tick_summary.robot_load.forEach((id) => {
 
             });
+            truck.update(message.tick_summary.truck_state, ticktime_in_ms);
         } else{
             map_loaded = true;
             init(message.world_state);

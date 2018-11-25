@@ -60,6 +60,7 @@ class Tick_Summary {
         int truck_position;
         boolean has_moved;
         boolean did_reset;
+        boolean has_been_serviced;
 
 
         Truck_State(Warehouse_Model.Truck truck){
@@ -69,6 +70,7 @@ class Tick_Summary {
             }
             this.did_reset = truck.did_reset;
             this.has_moved = truck.has_moved();
+            this.has_been_serviced = truck.has_been_serviced;
             truck.did_update();
         }
     }

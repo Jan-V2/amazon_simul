@@ -24,7 +24,7 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
     private Dijkstra_Path_Finder dijkstra_path_finder = new Dijkstra_Path_Finder();
     private Json_Handeler json_handeler = new Json_Handeler();
 
-    private int robot_id = 0;
+    private int robot_id_counter = 0;
     private int tick_id = 0;
 
     /*todo:
@@ -90,11 +90,30 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
             }
 
             void send_robot_to_dock(Robot robot){
-                ArrayList<Coord> free_dock_coords = get_free_docks();
-                if (free_dock_coords.size() > 0) {
-                    dijkstra_path_finder.find_path(robot, free_dock_coords.get(0));
-                    truck.robot_underway = true;
+                if (dock_is_free()){
+                    ArrayList<Coord> free_dock_coords = get_free_docks();
+                    if (free_dock_coords.size() > 0) {
+                        dijkstra_path_finder.find_path(robot, free_dock_coords.get(0));
+                        truck.robot_underway = true;
+                    }
                 }
+            }
+
+            boolean dock_is_free() {
+                ArrayList<Coord> dock_spots = dijkstra_path_finder.get_dock_spots();
+                for (Robot r : robots) {
+                    for (Coord spot : dock_spots) {
+                        if (r.location.equals(spot)) {
+                            return false;
+                        }
+                        if (r.destination != null){
+                            if (r.destination.equals(spot)){
+                                return false;
+                            }
+                        }
+                    }
+                }
+                return true;
             }
 
             void load_unload_truck(Robot robot, boolean loading) {
@@ -142,7 +161,6 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
                     }
                     if (found){
                         summary.add_scaffold_removed(robot.scaffold_location, robot.id);
-                        summary.add_robot_load(robot.id);
 
                         robot.carrying_scaffold = true;
                     }
@@ -152,12 +170,11 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
                     scaffolds_in_storage.add(new Scaffold(robot.scaffold_location));
                     robot.carrying_scaffold = false;
 
-                    summary.add_scaffold_placed(robot.scaffold_location, robot_id);
-                    summary.add_robot_unload(robot.id);
+                    summary.add_scaffold_placed(robot.scaffold_location, robot.id);
 
                 }
             }
-
+/*ervoor zorgen dat er max 1 robot op het dock zit of er aan het heen gaan is.*/
             void park_robot(Robot robot){
                 robot.going_to_warehouse = false;
                 ArrayList<Coord> parking_spots = get_free_parking_spots();
@@ -342,8 +359,8 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
 
         public Robot(Coord location){
             this.location = location;
-            id = robot_id;
-            robot_id++;
+            id = robot_id_counter;
+            robot_id_counter++;
         }
 
         void setDestination(Coord destination) {
@@ -482,6 +499,8 @@ public class Warehouse_Model implements Runnable, IModel_Connector {
                         new JsonPrimitive(tick_summary.truck_state.did_reset));
                 truck_state.add("has_moved",
                         new JsonPrimitive(tick_summary.truck_state.has_moved));
+                truck_state.add("has_been_serviced",
+                        new JsonPrimitive(tick_summary.truck_state.has_been_serviced));
                 tick_summary_json.add("truck_state", truck_state);
             }
 

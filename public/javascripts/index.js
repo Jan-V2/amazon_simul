@@ -6,13 +6,13 @@ let robots = {};
 let scaffolds = [];
 let truck;
 let server_msg;
+let scene = new THREE.Scene();
 const squaresize = 2;
 const ticktime_in_ms = 1000;
 const assets = new Assets();
-
+let prev_tick_queued = [];
 
 // woensdag
-// todo truck animation
 // todo scaffolds in en uitladen
 // todo texture voor truck en scaffold vinden
 // todo mischien rotatie toevoegen, if i can be fucked.
@@ -30,14 +30,12 @@ function Coord(x, z) {
     
 }
 
-function convert_coord(socket_coord){
-    return new Coord(socket_coord.x, socket_coord.y);
-}
+
 
 
 
 window.onload = function () {
-    let camera, scene, renderer;
+    let camera,renderer;
     let cameraControls;
     let assets = new Assets();
     let tick_id;
@@ -59,8 +57,7 @@ window.onload = function () {
         
         let world_map = world_state.world_map;
         
-        scene = new THREE.Scene();
-        
+
         renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight + 5);
@@ -115,11 +112,14 @@ window.onload = function () {
 
 
         for (let i in _.range(world_state.robo_info.length)){
-            let scaf = new Scaffold();
-            robots[i] = new Robot(scaf);
-            robots[i].set_position(new Coord_2d(world_state.robo_info[i].x,world_state.robo_info[i].y));
-            scene.add(robots[i]);
-            scene.add(scaf);
+            let info = world_state.robo_info[i];
+            if (info.has_scaffold){
+                robots[info.id] = new Robot(new Scaffold(), true);
+            }else{
+                robots[info.id] = new Robot();
+            }
+            robots[info.id].set_position(new Coord_2d(info.x, info.y));
+            scene.add(robots[info.id]);
         }
 
         truck = new Truck(squaresize);
@@ -136,11 +136,11 @@ window.onload = function () {
         camera.position.y = 5;
         camera.position.x = 15;
         cameraControls.update();
-        
+
         renderer.render(scene, camera);
         animate();
     }
-    
+
     function onWindowResize() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
@@ -150,34 +150,60 @@ window.onload = function () {
     let map_loaded = false;
     let websocket = new WebSocket("ws://" + window.location.hostname + ":" + window.location.port + "/ws");
     websocket.onmessage = (event) => {
+
+
         let message = JSON.parse(event.data);
         server_msg = message;
         if (map_loaded){
-
             message.tick_summary.robot_moves.forEach((move) => {
                 robots[move.id].animate_to_coord(new Coord_2d(move.to.x, move.to.y), ticktime_in_ms)
             });
-            message.tick_summary.scaffold_placed.forEach((coord) => {
+            message.tick_summary.scaffold_placed.forEach((item) => {
+                console.log("scaffold placed");
+                console.log(item);
+                robots[item.robo_id].unload_scaffold(convert_coord(item.coord));
 
+                console.log("");
             });
-            message.tick_summary.scaffold_removed.forEach((coord) => {
-
+            message.tick_summary.scaffold_removed.forEach((item) => {
+                console.log("scaffold removed");
+                console.log(item);
+                robots[item.robo_id].load_scaffold(get_scaffold_with_coord(convert_coord(item.coord)));
+                console.log("");
             });
-            message.tick_summary.robot_unload.forEach((id) => {
-
+            message.tick_summary.robot_unload.forEach((robo_id) => {
+                console.log("robot unload");
+                console.log(robo_id);
+                robots[robo_id].load_scaff_on_truck();
+                console.log("");
             });
-            message.tick_summary.robot_load.forEach((id) => {
-
+            message.tick_summary.robot_load.forEach((robo_id) => {
+                console.log("robot load");
+                console.log(robo_id);
+                robots[robo_id].load_scaff_from_truck();
+                console.log("");
             });
             truck.update(message.tick_summary.truck_state, ticktime_in_ms);
         } else{
             map_loaded = true;
             init(message.world_state);
         }
-        
+
+
+
     };
-    
-    
-    
-    
+
+    function get_scaffold_with_coord(coord) {
+        coord = coord.get_3d_coord();
+        for (let i in _.range(scaffolds.length)){
+            let location = scaffolds[i].location();
+            if (location.x === coord.x && location.y === coord.y){
+                return scaffolds[i];
+            }
+        }
+    }
 };
+
+function convert_coord(coord) {
+    return new Coord_2d(coord.x, coord.y);
+}

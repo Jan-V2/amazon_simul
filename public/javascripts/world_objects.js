@@ -1,3 +1,4 @@
+let logged = false;
 
 function Actor(){
     let _this = this;
@@ -50,7 +51,7 @@ Actor.prototype._animate_to_coord = function (_this, destination, time_in_ms, po
 };
 
 
-function Robot(scaffold){
+function Robot(scaffold, loaded_from_init){
     Actor.call(this);
     let _this = this;
     let height = 0.3;
@@ -66,13 +67,36 @@ function Robot(scaffold){
         align_scaffold();
     }
 
-    function align_scaffold() {
-        if (scaffold){
-            scaffold.set_position(_this.location(), true);
-        }else{
-            console.log("scaffold error 3");
-        }
+    this.load_scaff_on_truck = function () {
+        let temp = scaffold;
+        scaffold = undefined;
+        temp.set_position(new Coord_2d(NaN, NaN), true);
+        temp.dispose();
+    };
 
+    this.load_scaff_from_truck = function () {
+        scaffold = new Scaffold(_this.location(), true)
+        scaffold.load();
+    };
+
+    function align_scaffold() {
+        try {
+            if (scaffold){
+                scaffold.set_position(_this.location(), true);
+            }else{
+                console.log("kan scaff niet alignen, geen scaff");
+            }
+        }catch (err){
+            if (!logged){
+                logged = true;
+                console.log("");
+                console.log("fucking bulllshit");
+                console.log(err);
+                console.log(scaffold);
+                console.log(_this);
+                console.log("");
+            }
+        }
     }
 
     this.animate_to_coord = function(destination, ticktime_in_ms){
@@ -92,13 +116,17 @@ function Robot(scaffold){
             scaffold.load();
             align_scaffold();
         }else {
-            console.log("scaffold error 1");
+            console.log("kan scaffold niet laden, heeft al scaffold");
         }
     };
 
     this.unload_scaffold = function (destination) {
         if (scaffold){
-            scaffold.unload(destination);
+            if (loaded_from_init){
+                scaffold.unload(destination);
+            }else{
+                scaffold.unload(destination.get_3d_coord());
+            }
             let temp  = scaffold;
             scaffold = undefined;
             return temp;
@@ -124,6 +152,7 @@ function Truck(squaresize){
     let height = 2.5;
 
     let map_length = 17;
+    let dock_position = 9;
     let last_position = 0;
 
 
@@ -135,18 +164,18 @@ function Truck(squaresize){
     this.mesh.translateZ( -3);
 
     this.update = function (truckstate, ticktime_in_ms) {
-        console.log(truckstate);
         if (truckstate.did_reset){
             reset()
         }else{
             if (truckstate.has_moved){
-                if (last_position > truckstate.position){
-                    move_model(map_length, ticktime_in_ms);
+                if (truckstate.position === map_length  + 1){
+                    move_model(dock_position, ticktime_in_ms);
                 }else{
                     move_model(truckstate.position, ticktime_in_ms);
                 }
             }
         }
+        last_position = truckstate.position;
     };
 
     function move_model(one_d_coord, ticktime_in_ms, no_animation) {
@@ -154,7 +183,6 @@ function Truck(squaresize){
             _this.mesh.position.x = one_d_coord;
         }else {
             let coord = new Coord_2d( one_d_coord * squaresize , _this.mesh.position.z);
-            console.log(coord);
             Actor.prototype._animate_to_coord( _this, coord, ticktime_in_ms);
         }
 
@@ -168,7 +196,8 @@ function Truck(squaresize){
 Truck.prototype = Object.create(Actor.prototype);
 
 
-function Scaffold(position){
+function Scaffold(position, no_mult_coord){
+    console.log(position);
     Actor.call(this);
     let _this = this;
     this.mesh = new THREE.Mesh(assets.scaffold_geom, assets.robot_material);
@@ -176,8 +205,15 @@ function Scaffold(position){
 
     this.unload = function (destination) {
         _this.mesh.position.y = 0.5;
+
         if (destination){
-            destination = destination.get_3d_coord()
+            console.log("destination");
+            console.log(destination);
+            console.log("");
+            destination = convert_coord(destination);
+            if (!no_mult_coord){
+                destination = destination.get_3d_coord();
+            }
             _this.mesh.position.x = destination.x;
             _this.mesh.position.z = destination.y;
         }
@@ -188,6 +224,8 @@ function Scaffold(position){
     };
 
     this.unload(position);
+    scaffolds.push(this);
+    scene.add(this);
 
 }
 
